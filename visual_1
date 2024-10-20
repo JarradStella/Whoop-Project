@@ -1,0 +1,9 @@
+-- High-level datapoints in Whoop dataset
+
+SELECT
+    STRFTIME('%d/%m/%Y', MIN(CAST(cycle_start_time AS DATE))) AS first_workout_date,
+    STRFTIME('%d/%m/%Y', MAX(CAST(cycle_end_time AS DATE))) AS last_workout_date,
+    DATEDIFF('day', MIN(CAST(cycle_start_time AS DATE)), MAX(CAST(cycle_end_time AS DATE))) AS total_days,
+    COUNT(*) AS total_workouts
+FROM 
+    'whoop_workouts.csv';
