@@ -1,4 +1,4 @@
--- Calorie burn rate (cal/min) by activity type
+-- Calorie burn rate (cal/min) by activity type --> Tableau visual 2
 
 SELECT 
     CASE 
