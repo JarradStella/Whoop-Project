@@ -1,0 +1,80 @@
+-- Whoop metrics as shown in the 5th visual here on this dashboard: 
+-- https://public.tableau.com/app/profile/jarrad.stella/viz/WhoopFitnessDashboard/Dashboard2#1
+
+-- CREATE STRAIN BINS 
+WITH strain_bins AS (
+    SELECT 
+        CASE 
+            WHEN HOUR(CAST(cycle_end_time AS TIMESTAMP)) BETWEEN 0 AND 8 
+                THEN CAST(cycle_end_time AS TIMESTAMP) - INTERVAL 9 HOUR
+            ELSE 
+                CAST(cycle_end_time AS TIMESTAMP)
+        END AS adjusted_strain_date, -- need to do this as raw data skips some dates where I was still awake past midnight
+        day_strain,
+        CASE 
+            WHEN day_strain >= 0 AND day_strain < 2 THEN '0 - 2'
+            WHEN day_strain >= 2 AND day_strain < 4 THEN '02 - 4'
+            WHEN day_strain >= 4 AND day_strain < 6 THEN '04 - 6'
+            WHEN day_strain >= 6 AND day_strain < 8 THEN '06 - 8'
+            WHEN day_strain >= 8 AND day_strain < 10 THEN '08 - 10'
+            WHEN day_strain >= 10 AND day_strain < 12 THEN '10 - 12'
+            WHEN day_strain >= 12 AND day_strain < 14 THEN '12 - 14'
+            WHEN day_strain >= 14 AND day_strain < 16 THEN '14 - 16'
+            WHEN day_strain >= 16 AND day_strain < 18 THEN '16 - 18'
+            WHEN day_strain >= 18 AND day_strain < 20 THEN '18 - 20'
+            WHEN day_strain >= 20 AND day_strain < 22 THEN '20 - 22'
+        END AS day_strain_bin
+    FROM 
+        'whoop_physiological_cycles.csv'
+    GROUP BY 
+        1, 2
+    ORDER BY 
+        day_strain_bin
+), 
+
+recovery_categories AS (
+    SELECT 
+        CASE 
+            WHEN HOUR(CAST(cycle_end_time AS TIMESTAMP)) BETWEEN 0 AND 8 
+                THEN CAST(cycle_end_time AS TIMESTAMP) - INTERVAL 9 HOUR
+            ELSE 
+                CAST(cycle_end_time AS TIMESTAMP)
+        END AS adjusted_recovery_score_date, -- need to do this as raw data skips some dates where I was still awake past midnight
+        recovery_score,
+        CASE 
+            WHEN recovery_score >= 0 AND recovery_score < 34 THEN 'RED'
+            WHEN recovery_score >= 34 AND recovery_score < 67 THEN 'YELLOW'
+            WHEN recovery_score >= 67 AND recovery_score <= 100 THEN 'GREEN'
+        END AS recovery_bucket
+    FROM 
+        'whoop_physiological_cycles.csv'
+),
+
+recovery_score_previous_day_strain AS (
+    SELECT
+        CAST(rc.adjusted_recovery_score_date AS DATE) AS recovery_date,
+        rc.recovery_score AS recovery_score,
+        rc.recovery_bucket AS recovery_group,
+        CAST(sb.adjusted_strain_date AS DATE) AS previous_day_strain_date,
+        sb.day_strain AS previous_day_strain,
+        sb.day_strain_bin AS previous_day_strain_bin
+    FROM 
+        recovery_categories rc
+    LEFT JOIN 
+        strain_bins sb ON CAST(rc.adjusted_recovery_score_date AS DATE) = (CAST(sb.adjusted_strain_date AS DATE) + INTERVAL 1 DAY)
+)
+
+SELECT
+    previous_day_strain_bin,
+    recovery_group,
+    COUNT(*) AS count_recoveries,
+    SUM(COUNT(*)) OVER (PARTITION BY previous_day_strain_bin) AS total_recoveries_by_strain_bin
+FROM 
+    recovery_score_previous_day_strain
+WHERE 
+    recovery_group IS NOT NULL
+    AND previous_day_strain_bin IS NOT NULL
+GROUP BY 
+    1, 2
+ORDER BY 
+    previous_day_strain_bin ASC;
