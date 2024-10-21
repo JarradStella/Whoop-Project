@@ -1,0 +1,44 @@
+-- Whoop metrics as shown in the 4th visual here on this dashboard: 
+-- https://public.tableau.com/app/profile/jarrad.stella/viz/WhoopFitnessDashboard/Dashboard2#1
+
+WITH total_calories AS (
+    SELECT
+        HOUR(CAST(cycle_end_time AS TIMESTAMP)) AS hour,
+        CASE 
+            WHEN HOUR(CAST(cycle_end_time AS TIMESTAMP)) BETWEEN 0 AND 8 
+                THEN CAST(cycle_end_time AS TIMESTAMP) - INTERVAL 9 HOUR
+            ELSE CAST(cycle_end_time AS TIMESTAMP)
+        END AS adjusted_cycle_end_time,
+        CAST(cycle_end_time AS TIMESTAMP) AS date,
+        calories_burned AS total_cal_burned
+    FROM 
+        whoop_physiological_cycles.csv
+),
+
+active_calories AS (
+    SELECT
+        CAST(workout_start_time AS TIMESTAMP) AS date,
+        SUM(calories_burned) AS active_cal_burned
+    FROM 
+        'whoop_workouts.csv'
+    GROUP BY 
+        date
+    ORDER BY 
+        date ASC
+)
+
+SELECT
+    CAST(tc.adjusted_cycle_end_time AS DATE) AS date,
+    tc.total_cal_burned,
+    COALESCE(SUM(ac.active_cal_burned), 0) AS active_calories_burned,
+    tc.total_cal_burned - COALESCE(SUM(ac.active_cal_burned), 0) AS base_calories
+FROM 
+    total_calories tc
+LEFT JOIN 
+    active_calories ac 
+    ON CAST(tc.adjusted_cycle_end_time AS DATE) = CAST(ac.date AS DATE)
+GROUP BY 
+    tc.adjusted_cycle_end_time, 
+    tc.total_cal_burned
+ORDER BY 
+    date ASC;
