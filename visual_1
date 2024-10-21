@@ -1,9 +1,10 @@
--- High-level datapoints in Whoop dataset
+-- Whoop metrics as shown in the first visual here on this dashboard: 
+-- https://public.tableau.com/app/profile/jarrad.stella/viz/WhoopFitnessDashboard/Dashboard2#1
 
 SELECT
-    STRFTIME('%d/%m/%Y', MIN(CAST(cycle_start_time AS DATE))) AS first_workout_date,
-    STRFTIME('%d/%m/%Y', MAX(CAST(cycle_end_time AS DATE))) AS last_workout_date,
-    DATEDIFF('day', MIN(CAST(cycle_start_time AS DATE)), MAX(CAST(cycle_end_time AS DATE))) AS total_days,
-    COUNT(*) AS total_workouts
+    COUNT(*) AS total_workouts,
+    ROUND(AVG(calories_burned), 2) AS avg_calories_burned,
+    SUM(calories_burned) AS total_calories_burned,
+    MAX(max_hr) AS max_heartrate
 FROM 
     'whoop_workouts.csv';
