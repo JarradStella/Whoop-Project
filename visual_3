@@ -1,0 +1,20 @@
+-- Whoop metrics as shown in the 3rd visual here on this dashboard: 
+-- https://public.tableau.com/app/profile/jarrad.stella/viz/WhoopFitnessDashboard/Dashboard2#1
+
+SELECT 
+    CASE 
+        WHEN activity_name = 'Pilates' THEN 'Hot Pilates'
+        ELSE activity_name 
+    END AS activity_name,
+    COUNT(*) AS count_activities,
+    SUM(calories_burned) AS total_calories_burned,
+    SUM(duration_min) AS total_minutes,
+    ROUND((total_calories_burned / total_minutes), 0) AS calories_per_min
+FROM 
+    'whoop_workouts.csv'
+GROUP BY 
+    activity_name
+HAVING 
+    COUNT(*) > 5
+ORDER BY 
+    calories_per_min DESC;
